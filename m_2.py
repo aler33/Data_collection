@@ -1,1 +1,0 @@
-    pprint(vacansions_list)
