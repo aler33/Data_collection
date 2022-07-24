@@ -4,12 +4,13 @@ from scrapy.utils.project import get_project_settings
 from scrapy.utils.log import configure_logging
 # from jobparser.spiders.hhru import HhruSpider
 from jobparser.spiders.labirintru import LabirintruSpider
+from jobparser.spiders.castoramaru import CastoramaruSpider
 
 if __name__ == '__main__':
     configure_logging()
     settings = get_project_settings()
     runner = CrawlerRunner(settings)
-    runner.crawl(LabirintruSpider)
+    runner.crawl(CastoramaruSpider, search='дрель')
     d = runner.join()
     d.addBoth(lambda _: reactor.stop())
     reactor.run()

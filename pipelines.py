@@ -5,56 +5,39 @@
 
 
 # useful for handling different item types with a single interface
-from itemadapter import ItemAdapter
+import scrapy
+# from itemadapter import ItemAdapter
 from pymongo import MongoClient
-import re
+from scrapy.pipelines.images import ImagesPipeline
+import hashlib
+
+from scrapy.utils.python import to_bytes
 
 
 class JobparserPipeline:
     def __init__(self):
         client = MongoClient('localhost', 27017)
-        self.mongo_base = client.book220720
+        self.mongo_base = client.book240720
 
     def process_item(self, item, spider):
-        item['base_price'] = self.process_base_price(item['base_price'])
-        item['sale_price'] = self.process_sale_price(item['sale_price'])
-        item['buy_price'] = self.process_buy_price(item['buy_price'], item['sale_price'])
-        item['rating'] = self.process_rating(item['rating'])
-        item['name'] = self.process_name(item['name'])
-        item['_id'] = self.process_id(item['url'])
-        # print(item)
-
         collection = self.mongo_base[spider.name]
         collection.insert_one(item)
-        # print(item)
         return item
 
-    def process_base_price(self, base_price):
-        if not base_price:
-            return base_price
-        return int(base_price)
 
-    def process_sale_price(self, sale_price):
-        if not sale_price:
-            return sale_price
-        return int(sale_price)
+class PhotosPipeline(ImagesPipeline):
+    def get_media_requests(self, item, info):
+        if item['photos']:
+            for img in item['photos']:
+                try:
+                    yield scrapy.Request(img)
+                except Exception as e:
+                    print(e)
 
-    def process_buy_price(self, buy_price, sale_price):
-        if not buy_price:
-            buy_price = sale_price
-        return int(buy_price)
+    def item_completed(self, results, item, info):
+        item['photos'] = [itm[1] for itm in results if itm[0]]
+        return item
 
-    def process_rating(self, rating):
-        return round(float(rating), 2)
-
-    def process_name(self, name):
-        if ':' in name:
-            re_name = (re.split(r':', name))
-            name = re_name[1]
-            if name[0] == ' ':
-                name = name[1:]
-        return name
-
-    def process_id(self, url):
-        return hash(url)
-
+    def file_path(self, request, response=None, info=None, *, item=None):
+        image_guid = hashlib.sha1(to_bytes(request.url)).hexdigest()
+        return f'full/{item["name"]}/{image_guid}.jpg'
